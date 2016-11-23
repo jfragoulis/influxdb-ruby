@@ -16,6 +16,18 @@ describe InfluxDB::Client do
 
   let(:database) { subject.config.database }
 
+  let(:query) do
+    { u: "username", p: "password", precision: "s", db: database }
+  end
+
+  before do
+    stub_request(:post, "http://influxdb.test:9999/write").with(
+      query: query,
+      headers: { "Content-Type" => "application/octet-stream" },
+      body: body
+    ).to_return(status: 204)
+  end
+
   describe "#write_point" do
     let(:series) { "cpu" }
     let(:data) do
@@ -24,14 +36,6 @@ describe InfluxDB::Client do
     end
     let(:body) do
       InfluxDB::PointValue.new(data.merge(series: series)).dump
-    end
-
-    before do
-      stub_request(:post, "http://influxdb.test:9999/write").with(
-        query: { u: "username", p: "password", precision: 's', db: database },
-        headers: { "Content-Type" => "application/octet-stream" },
-        body: body
-      ).to_return(status: 204)
     end
 
     it "should POST to add single point" do
@@ -62,14 +66,6 @@ describe InfluxDB::Client do
         end.join("\n")
       end
 
-      before do
-        stub_request(:post, "http://influxdb.test:9999/write").with(
-          query: { u: "username", p: "password", precision: 's', db: database },
-          headers: { "Content-Type" => "application/octet-stream" },
-          body: body
-        ).to_return(status: 204)
-      end
-
       it "should POST multiple points" do
         expect(subject.write_points(data)).to be_a(Net::HTTPNoContent)
       end
@@ -86,14 +82,6 @@ describe InfluxDB::Client do
         data.map do |point|
           InfluxDB::PointValue.new(point).dump
         end.join("\n")
-      end
-
-      before do
-        stub_request(:post, "http://influxdb.test:9999/write").with(
-          query: { u: "username", p: "password", precision: 's', db: database },
-          headers: { "Content-Type" => "application/octet-stream" },
-          body: body
-        ).to_return(status: 204)
       end
 
       it "should POST multiple points" do
@@ -117,15 +105,12 @@ describe InfluxDB::Client do
         end.join("\n")
       end
 
-      before do
-        stub_request(:post, "http://influxdb.test:9999/write").with(
-          query: { u: "username", p: "password", precision: 'ms', db: database },
-          headers: { "Content-Type" => "application/octet-stream" },
-          body: body
-        ).to_return(status: 204)
+      let(:query) do
+        { u: "username", p: "password", precision: "ms", db: database }
       end
+
       it "should POST multiple points" do
-        expect(subject.write_points(data, 'ms')).to be_a(Net::HTTPNoContent)
+        expect(subject.write_points(data, "ms")).to be_a(Net::HTTPNoContent)
       end
     end
 
@@ -143,15 +128,12 @@ describe InfluxDB::Client do
         end.join("\n")
       end
 
-      before do
-        stub_request(:post, "http://influxdb.test:9999/write").with(
-          query: { u: "username", p: "password", precision: 's', db: database, rp: 'rp_1_hour' },
-          headers: { "Content-Type" => "application/octet-stream" },
-          body: body
-        ).to_return(status: 204)
+      let(:query) do
+        super().merge(rp: "rp_1_hour")
       end
+
       it "should POST multiple points" do
-        expect(subject.write_points(data, nil, 'rp_1_hour')).to be_a(Net::HTTPNoContent)
+        expect(subject.write_points(data, nil, "rp_1_hour")).to be_a(Net::HTTPNoContent)
       end
     end
   end
